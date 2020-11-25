@@ -14,5 +14,28 @@
     </relocation>
   </distributionManagement>
 
+  <name>Azure Spring Cloud Storage</name>
+  <description>Azure Spring Cloud Storage</description>
+  <url>https://github.com/Azure/azure-sdk-for-java</url>
+  <licenses>
+    <license>
+      <name>The MIT License (MIT)</name>
+      <url>http://opensource.org/licenses/MIT</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+  <scm>
+    <url>https://github.com/Azure/azure-sdk-for-java</url>
+    <connection>scm:git:https://github.com/Azure/azure-sdk-for-java.git</connection>
+    <developerConnection/>
+    <tag>HEAD</tag>
+  </scm>
+  <developers>
+    <developer>
+      <id>microsoft</id>
+      <name>Microsoft Corporation</name>
+    </developer>
+  </developers>
+
 </project>
 
