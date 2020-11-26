@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.microsoft.azure</groupId>
+  <artifactId>spring-cloud-azure-servicebus-topic-stream-binder</artifactId>
+  <version>2.0.0-beta.1</version>
+  <distributionManagement>
+    <relocation>
+      <groupId>com.azure.spring</groupId>
+      <artifactId>azure-spring-cloud-stream-binder-servicebus-topic</artifactId>
+    </relocation>
+  </distributionManagement>
+
+  <name>Azure Spring Cloud Stream Service Bus Topic Binder</name>
+  <description>Azure Service Bus binder for Spring Cloud Stream</description>
+
+  <url>https://github.com/Azure/azure-sdk-for-java</url>
+  <licenses>
+    <license>
+      <name>The MIT License (MIT)</name>
+      <url>http://opensource.org/licenses/MIT</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+  <scm>
+    <url>https://github.com/Azure/azure-sdk-for-java</url>
+    <connection>scm:git:https://github.com/Azure/azure-sdk-for-java.git</connection>
+    <developerConnection/>
+    <tag>HEAD</tag>
+  </scm>
+  <developers>
+    <developer>
+      <id>microsoft</id>
+      <name>Microsoft Corporation</name>
+    </developer>
+  </developers>
+
+</project>
