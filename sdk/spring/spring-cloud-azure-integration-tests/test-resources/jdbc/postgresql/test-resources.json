@@ -1,0 +1,193 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "testApplicationId": {
+      "type": "string"
+    },
+    "identityName": {
+      "type": "string",
+      "defaultValue": "identityForPostgresql"
+    },
+    "tenantId": {
+      "defaultValue": "[subscription().tenantId]",
+      "type": "string"
+    },
+    "baseName": {
+      "defaultValue": "[resourceGroup().name]",
+      "type": "String"
+    },
+    "administratorLogin": {
+      "defaultValue": "postgresqladmin",
+      "type": "String"
+    },
+    "administratorLoginPassword": {
+      "defaultValue": "[concat(parameters('baseName'),'1PostgreSqlTestpw&')]",
+      "type": "String"
+    },
+    "serverName": {
+      "type": "string",
+      "defaultValue": "[concat(parameters('baseName'),'-passwordless-postgresql-flexible-it')]",
+      "metadata": {
+        "description": "Server Name for Azure database for MySQL"
+      }
+    },
+    "postgresql_flexible_server_username": {
+      "defaultValue": "passwordless-postgresql-test-admin",
+      "type": "String"
+    },
+    "currentEpoch": {
+      "type": "int",
+      "defaultValue": "[dateTimeToEpoch(utcNow())]"
+    },
+    "utcValue": {
+      "type": "string",
+      "defaultValue": "[utcNow()]"
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "The location of the resource. By default, this is the same as the resource group."
+      }
+    }
+  },
+  "variables": {
+    "version": "[string(add(mod(parameters('currentEpoch'),4), 11))]",
+    "bootstrapRoleAssignmentId": "[guid(concat(resourceGroup().id, parameters('identityName')))]",
+    "contributorRoleDefinitionId": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Authorization/roleDefinitions/', 'b24988ac-6180-42a0-ab88-20f7382dd24c')]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+      "apiVersion": "2018-11-30",
+      "name": "[parameters('identityName')]",
+      "location": "[parameters('location')]"
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2018-09-01-preview",
+      "name": "[variables('bootstrapRoleAssignmentId')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName'))]"
+      ],
+      "properties": {
+        "roleDefinitionId": "[variables('contributorRoleDefinitionId')]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')), '2018-11-30').principalId]",
+        "scope": "[resourceGroup().id]",
+        "principalType": "ServicePrincipal"
+      }
+    },
+    {
+      "type": "Microsoft.DBforPostgreSQL/flexibleServers",
+      "apiVersion": "2022-01-20-preview",
+      "name": "[parameters('serverName')]",
+      "location": "[resourceGroup().location]",
+      "sku": {
+        "name": "Standard_D2ds_v4",
+        "tier": "GeneralPurpose"
+      },
+      "properties": {
+        "version": "14",
+        "administratorLogin": "[parameters('administratorLogin')]",
+        "administratorLoginPassword": "[parameters('administratorLoginPassword')]",
+        "availabilityZone": "2",
+        "storage": {
+          "storageSizeGB": 128
+        },
+        "backup": {
+          "backupRetentionDays": 7,
+          "geoRedundantBackup": "Disabled"
+        },
+        "network": {},
+        "highAvailability": {
+          "mode": "Disabled"
+        },
+        "maintenanceWindow": {
+          "customWindow": "Disabled",
+          "dayOfWeek": 0,
+          "startHour": 0,
+          "startMinute": 0
+        }
+      }
+    },
+    {
+      "type": "Microsoft.DBforPostgreSQL/flexibleServers/databases",
+      "apiVersion": "2022-01-20-preview",
+      "name": "[concat(parameters('serverName'), '/db')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', parameters('serverName'))]"
+      ],
+      "properties": {
+        "charset": "UTF8",
+        "collation": "en_US.utf8"
+      }
+    },
+    {
+      "type": "Microsoft.DBforPostgreSQL/flexibleServers/firewallRules",
+      "apiVersion": "2022-01-20-preview",
+      "name": "[concat(parameters('serverName'), '/AllowAll')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', parameters('serverName'))]"
+      ],
+      "properties": {
+        "startIpAddress": "0.0.0.0",
+        "endIpAddress": "255.255.255.255"
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deploymentScripts",
+      "apiVersion": "2020-10-01",
+      "name": "createAADAdmin",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', parameters('serverName'))]"
+      ],
+      "identity": {
+        "type": "UserAssigned",
+        "userAssignedIdentities": {
+          "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName'))]": {
+          }
+        }
+      },
+      "kind": "AzureCLI",
+      "properties": {
+        "forceUpdateTag": "[parameters('utcValue')]",
+        //TODO @zhihao.guo the version of 2.43.0 is not supported by Azure ARM templates yet.
+        "AzCliVersion": "2.43.0",
+        "timeout": "PT30M",
+        "environmentVariables": [
+          {
+            "name": "ResourceGroup",
+            "value": "[parameters('baseName')]"
+          },
+          {
+            "name": "ServerName",
+            "secureValue": "[parameters('serverName')]"
+          },
+          {
+            "name": "DisplayName",
+            "value": "[parameters('postgresql_flexible_server_username')]"
+          },
+          {
+            "name": "ObjectId",
+            "value": "[parameters('testApplicationId')]"
+          }
+        ],
+        "scriptContent": "az postgres flexible-server ad-admin create resource-group $ResourceGroup -server-name $ServerName --display-name $DisplayName --object-id $ObjectId --type ServicePrincipal",
+        "cleanupPreference": "OnSuccess",
+        "retentionInterval": "P1D"
+      }
+    }
+  ],
+  "outputs": {
+    "AZURE_POSTGRESQL_FLEXIBLE_SERVER_ENDPOINT": {
+      "type": "string",
+      "value": "[reference(parameters('serverName')).fullyQualifiedDomainName]"
+    },
+    "POSTGRESQL_FLEXIBLE_SERVER_USERNAME": {
+      "type": "string",
+      "value": "[parameters('postgresql_flexible_server_username')]"
+    }
+  }
+}
